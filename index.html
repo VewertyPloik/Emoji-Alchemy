@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emoji Alchemy - Free Placement</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #222;
+      color: #eee;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #homeScreen, #gameScreen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #homeScreen {
+      background: linear-gradient(45deg, #4a90e2, #50e3c2);
+    }
+    #homeScreen h1 {
+      font-size: 3rem;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px #000;
+    }
+    #homeScreen button {
+      font-size: 1.5rem;
+      padding: 15px 40px;
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      background: #fff;
+      color: #333;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      transition: background 0.3s;
+    }
+    #homeScreen button:hover {
+      background: #ddd;
+    }
+    #gameScreen {
+      background: #111;
+      padding: 10px;
+      position: relative;
+      overflow: hidden;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    #backButton {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #444;
+      color: #eee;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      user-select: none;
+      z-index: 10;
+    }
+    #backButton:hover {
+      background: #666;
+    }
+    #unlockedCounter {
+      font-size: 1.2rem;
+      margin: 10px 0;
+      text-align: center;
+      user-select: none;
+    }
+    #message {
+      text-align: center;
+      margin: 10px;
+      min-height: 24px;
+      font-weight: bold;
+      color: #4af;
+      user-select: none;
+      height: 24px;
+    }
+    #canvas {
+      flex-grow: 1;
+      position: relative;
+      background: #222;
+      border: 2px solid #444;
+      margin: 10px auto;
+      max-width: 100%;
+      overflow: visible;
+      user-select: none;
+      cursor: crosshair;
+    }
+    .placed-emoji {
+      position: absolute;
+      font-size: 48px;
+      cursor: pointer;
+      user-select: none;
+      padding: 5px;
+      border-radius: 10px;
+      background: #333a;
+      box-shadow: 0 0 8px #000 inset;
+      transition: transform 0.2s;
+      user-select: none;
+      transform-origin: center center;
+      pointer-events: auto;
+      user-select: none;
+      text-align: center;
+      line-height: 1;
+      user-select: none;
+    }
+    .placed-emoji:hover {
+      background: #4a6afc88;
+      transform: scale(1.2);
+      z-index: 100;
+    }
+    #inventory {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 10px;
+      background: #222;
+      border-top: 2px solid #555;
+      min-height: 100px;
+      user-select: none;
+    }
+    .emoji {
+      font-size: 48px;
+      cursor: pointer;
+      user-select: none;
+      background: #333;
+      padding: 10px;
+      border-radius: 12px;
+      box-shadow: 0 0 8px #000 inset;
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .emoji.selected {
+      outline: 3px solid #4af;
+      transform: scale(1.2);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="homeScreen">
+    <h1>Emoji Alchemy</h1>
+    <button id="playBtn">Play</button>
+  </div>
+
+  <div id="gameScreen" style="display:none;">
+    <button id="backButton">Home</button>
+    <div id="unlockedCounter">Unlocked 0/30</div>
+    <div id="message"></div>
+    <div id="canvas" aria-label="Crafting Canvas" tabindex="0"></div>
+    <div id="inventory" aria-label="Emoji Inventory"></div>
+  </div>
+
+<script>
+(() => {
+  const recipes = {
+    "💧+💧": "💦",
+    "💦+💦": "🌧️",
+    "🌧️+🌧️": "🌊",
+    "🔥+🔥": "💥",
+    "🔥+💧": "🌈",
+    "🌱+🌱": "🌿",
+    "🌿+🌿": "🍀",
+    "🍀+🍀": "🌳",
+    "🌳+🔥": "🌲",
+    "🌱+💧": "🌻",
+    "🌻+🌻": "🌼",
+    "🌼+🌼": "💐",
+    "💐+💐": "🎂",
+    "🍎+🍎": "🍏",
+    "🍏+🍎": "🥧",
+    "🥧+🔥": "🍰",
+    "🌲+🌲": "🏞️",
+    "🏞️+🌳": "🌄",
+    "🌊+🌊": "🛶",
+    "🛶+🌲": "🏕️",
+    "🏕️+🔥": "🔥",
+    "💧+🌿": "🍄",
+    "🍄+🍄": "🦋",
+    "💥+🔥": "☄️",
+    "☄️+🌲": "🌋",
+    "🌋+🌧️": "🌈",
+  };
+
+  const maxRecipes = 30;
+  const startingEmojis = ["🔥", "💧", "🌱", "🍎"];
+
+  let inventory = [];
+  let unlockedSet = new Set();
+
+  // placedEmojis: {id, emoji, x, y, element}
+  let placedEmojis = [];
+  let idCounter = 0;
+
+  // Selected emoji index in inventory for placing or crafting
+  let selectedInventoryIndex = null;
+
+  const homeScreen = document.getElementById("homeScreen");
+  const gameScreen = document.getElementById("gameScreen");
+  const canvas = document.getElementById("canvas");
+  const inventoryDiv = document.getElementById("inventory");
+  const unlockedCounter = document.getElementById("unlockedCounter");
+  const messageDiv = document.getElementById("message");
+  const playBtn = document.getElementById("playBtn");
+  const backButton = document.getElementById("backButton");
+
+  // Save/load progress (placed emojis + inventory + unlocked)
+  function saveProgress() {
+    const placedData = placedEmojis.map(p => ({
+      id: p.id,
+      emoji: p.emoji,
+      x: p.x,
+      y: p.y
+    }));
+    localStorage.setItem("emojiAlchemyInventory", JSON.stringify(inventory));
+    localStorage.setItem("emojiAlchemyUnlocked", JSON.stringify(Array.from(unlockedSet)));
+    localStorage.setItem("emojiAlchemyPlaced", JSON.stringify(placedData));
+  }
+
+  function loadProgress() {
+    const savedInventory = JSON.parse(localStorage.getItem("emojiAlchemyInventory"));
+    const savedUnlocked = JSON.parse(localStorage.getItem("emojiAlchemyUnlocked"));
+    const savedPlaced = JSON.parse(localStorage.getItem("emojiAlchemyPlaced"));
+
+    if (Array.isArray(savedInventory) && savedInventory.length > 0) {
+      inventory = savedInventory;
+    } else {
+      inventory = [...startingEmojis];
+    }
+    if (Array.isArray(savedUnlocked)) {
+      unlockedSet = new Set(savedUnlocked);
+    } else {
+      unlockedSet = new Set(startingEmojis);
+    }
+    if (Array.isArray(savedPlaced)) {
+      placedEmojis = savedPlaced.map(p => ({...p}));
+      // Assign new elements later when rendering
+    } else {
+      placedEmojis = [];
+    }
+  }
+
+  function updateUnlockedCounter() {
+    unlockedCounter.textContent = `Unlocked ${unlockedSet.size}/${maxRecipes}`;
+  }
+
+  function showMessage(text) {
+    messageDiv.textContent = text;
+    clearTimeout(messageDiv._timeout);
+    messageDiv._timeout = setTimeout(() => {
+      messageDiv.textContent = "";
+    }, 3000);
+  }
+
+  // Render inventory
+  function renderInventory() {
+    inventoryDiv.innerHTML = "";
+    inventory.forEach((emoji, i) => {
+      const span = document.createElement("span");
+      span.textContent = emoji;
+      span.classList.add("emoji");
+      if (i === selectedInventoryIndex) span.classList.add("selected");
+      span.dataset.index = i;
+
+      span.addEventListener("click", () => {
+        if (selectedInventoryIndex === i) {
+          selectedInventoryIndex = null;
+          showMessage("Deselected emoji.");
+        } else {
+          selectedInventoryIndex = i;
+          showMessage(`Selected ${emoji} to place or craft.`);
+        }
+        renderInventory();
+      });
+
+      inventoryDiv.appendChild(span);
+    });
+  }
+
+  // Clear canvas and render placed emojis
+  function renderCanvas() {
+    canvas.innerHTML = "";
+    placedEmojis.forEach(p => {
+      const div = document.createElement("div");
+      div.classList.add("placed-emoji");
+      div.textContent = p.emoji;
+      div.style.left = p.x + "px";
+      div.style.top = p.y + "px";
+      div.dataset.id = p.id;
+      div.title = p.emoji;
+
+      div.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (selectedInventoryIndex === null) {
+          showMessage("Select an emoji from inventory to craft.");
+          return;
+        }
+        const selectedEmoji = inventory[selectedInventoryIndex];
+        attemptCraft(selectedEmoji, p.emoji, p.id);
+      });
+
+      canvas.appendChild(div);
+      p.element = div;
+    });
+  }
+
+  // Attempt crafting: selected inventory emoji + placed emoji at placedId
+  function attemptCraft(selectedEmoji, placedEmoji, placedId) {
+    const pair = [selectedEmoji, placedEmoji].sort().join("+");
+    if (recipes.hasOwnProperty(pair)) {
+      const result = recipes[pair];
+      if (!unlockedSet.has(result)) {
+        unlockedSet.add(result);
+        inventory.push(result);
+        showMessage(`Crafted new: ${result}`);
+        updateUnlockedCounter();
+      } else {
+        showMessage(`Crafted existing: ${result}`);
+      }
+      // Update placed emoji
+      const placedObj = placedEmojis.find(p => p.id === placedId);
+      if (placedObj) {
+        placedObj.emoji = result;
+      }
+      saveProgress();
+      renderInventory();
+      renderCanvas();
+    } else {
+      showMessage("No recipe for that combo.");
+    }
+  }
+
+  // Handle canvas click to place selected emoji at click position
+  function onCanvasClick(e) {
+    if (selectedInventoryIndex === null) {
+      showMessage("Select an emoji from inventory first.");
+      return;
+    }
+    // Get click position relative to canvas
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - 24; // center offset approx half emoji width
+    const y = e.clientY - rect.top - 24;  // center offset approx half emoji height
+
+    const newPlaced = {
+      id: idCounter++,
+      emoji: inventory[selectedInventoryIndex],
+      x,
+      y
+    };
+    placedEmojis.push(newPlaced);
+    showMessage(`Placed ${newPlaced.emoji}.`);
+    saveProgress();
+    renderCanvas();
+  }
+
+  playBtn.addEventListener("click", () => {
+    homeScreen.style.display = "none";
+    gameScreen.style.display = "flex";
+    loadProgress();
+    updateUnlockedCounter();
+    renderInventory();
+    renderCanvas();
+  });
+
+  backButton.addEventListener("click", () => {
+    gameScreen.style.display = "none";
+    homeScreen.style.display = "flex";
+    selectedInventoryIndex = null;
+  });
+
+  canvas.addEventListener("click", onCanvasClick);
+})();
+</script>
+
+</body>
+</html>
